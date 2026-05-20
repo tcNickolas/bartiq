@@ -203,3 +203,52 @@ def test_compile_and_evaluate_double_factorization_routine(backend):
 
     for resource_name in expected_resources:
         assert expected_resources[resource_name] == evaluated_routine.resources[resource_name].value
+
+
+def test_derived_resources_can_be_added_during_evaluation(backend):
+    input_qref = {
+        "name": "root",
+        "type": None,
+        "input_params": ["n"],
+        "resources": [
+            {"name": "a", "type": "additive", "value": "n"},
+            {"name": "b", "type": "additive", "value": "2*n"},
+        ],
+    }
+    routine = CompiledRoutine.from_qref(RoutineV1(**input_qref), backend)
+
+    def _sum_resources(compiled_routine, symbolic_backend):
+        return compiled_routine.resource_values["a"] + compiled_routine.resource_values["b"]
+
+    result = evaluate(
+        routine,
+        {},
+        derived_resources=[{"name": "c", "type": "additive", "calculate": _sum_resources}],
+        backend=backend,
+    ).routine
+
+    assert result.resources["c"].value == backend.as_expression("3*n")
+
+
+def test_derived_resources_are_applied_in_postorder_fashion(backend):
+    input_qref = {
+        "name": "parent",
+        "type": None,
+        "children": [{"name": "child", "type": None, "resources": []}],
+        "resources": [{"name": "x", "type": "additive", "value": "M"}],
+    }
+    parent = CompiledRoutine.from_qref(RoutineV1(**input_qref), backend)
+
+    def _double_x(compiled_routine, symbolic_backend):
+        our_x = compiled_routine.resource_values.get("x", 3)
+        return 2 * our_x + sum(child.resource_values["double_x"] for child in compiled_routine.children.values())
+
+    result = evaluate(
+        parent,
+        {},
+        derived_resources=[{"name": "double_x", "type": "additive", "calculate": _double_x}],
+        backend=backend,
+    ).routine
+
+    assert result.children["child"].resources["double_x"].value == 6
+    assert result.resources["double_x"].value == backend.as_expression("2*M + 6")

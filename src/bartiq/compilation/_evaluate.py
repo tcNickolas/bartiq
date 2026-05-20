@@ -12,7 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, replace
 from typing import Callable, Generic, TypeVar
 
@@ -22,6 +22,8 @@ from bartiq._routine import CompiledRoutine, routine_to_qref
 from bartiq.compilation._common import (
     ConstraintValidationError,
     Context,
+    DerivedResource,
+    add_derived_resources,
     collect_children_variables,
     evaluate_constraints,
     evaluate_ports,
@@ -63,6 +65,7 @@ def evaluate(
     *,
     backend: SymbolicBackend[T] = sympy_backend,
     functions_map: FunctionsMap[T] | None = None,
+    derived_resources: Iterable[DerivedResource[T]] = (),
 ) -> EvaluationResult[T]:
     """Substitutes variables into compiled routine.
 
@@ -73,6 +76,9 @@ def evaluate(
             expressions understood by backend, or via strings, e.g. `{"N": 2, "M": "k+3"}.
         backend: a backend used for manipulating symbolic expressions.
         functions_map: a dictionary mapping function names to their concrete implementations.
+        derived_resources: iterable with dictionaries describing how to calculate derived resources.
+            Each dictionary should contain the derived resource's name, type
+            and the function mapping a routine to the value of resource.
 
     Returns:
         A new instance of CompiledRoutine with appropriate substitutions made.
@@ -83,7 +89,7 @@ def evaluate(
         assignment: backend.parse_constant(backend.as_expression(value)) for assignment, value in assignments.items()
     }
     evaluated_routine = _evaluate_internal(
-        compiled_routine, parsed_assignments, backend, functions_map, Context(compiled_routine.name)
+        compiled_routine, parsed_assignments, backend, functions_map, derived_resources, Context(compiled_routine.name)
     )
     return EvaluationResult(routine=evaluated_routine, _backend=backend)
 
@@ -93,6 +99,7 @@ def _evaluate_internal(
     inputs: dict[str, TExpr[T]],
     backend: SymbolicBackend[T],
     functions_map: FunctionsMap[T],
+    derived_resources: Iterable[DerivedResource[T]],
     context: Context,
 ) -> CompiledRoutine[T]:
     try:
@@ -106,22 +113,33 @@ def _evaluate_internal(
 
     updated_children: dict[str, CompiledRoutine[T]] = {
         name: _evaluate_internal(
-            child, inputs, backend=backend, functions_map=functions_map, context=context.descend(name)
+            child,
+            inputs,
+            backend=backend,
+            functions_map=functions_map,
+            derived_resources=derived_resources,
+            context=context.descend(name),
         )
         for name, child in compiled_routine.children.items()
     }
 
     children_variables: dict[str, TExpr] = collect_children_variables(updated_children)
 
-    return replace(
-        compiled_routine,
-        input_params=sorted(set(compiled_routine.input_params).difference(inputs)),
-        ports=evaluate_ports(compiled_routine.ports, inputs, backend, functions_map),
-        resources=evaluate_resources(compiled_routine.resources, inputs | children_variables, backend, functions_map),
-        constraints=new_constraints,
-        repetition=evaluate_repetition(compiled_routine.repetition, inputs, backend, functions_map),
-        children=updated_children,
-        first_pass_resources=evaluate_resources(
-            compiled_routine.first_pass_resources, inputs | children_variables, backend, functions_map
+    return add_derived_resources(
+        replace(
+            compiled_routine,
+            input_params=sorted(set(compiled_routine.input_params).difference(inputs)),
+            ports=evaluate_ports(compiled_routine.ports, inputs, backend, functions_map),
+            resources=evaluate_resources(
+                compiled_routine.resources, inputs | children_variables, backend, functions_map
+            ),
+            constraints=new_constraints,
+            repetition=evaluate_repetition(compiled_routine.repetition, inputs, backend, functions_map),
+            children=updated_children,
+            first_pass_resources=evaluate_resources(
+                compiled_routine.first_pass_resources, inputs | children_variables, backend, functions_map
+            ),
         ),
+        backend,
+        derived_resources,
     )

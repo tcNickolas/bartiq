@@ -16,7 +16,7 @@ import pytest
 import sympy
 from qref.schema_v1 import RoutineV1
 
-from bartiq import CompiledRoutine, Routine
+from bartiq import CompiledRoutine, Resource, ResourceType, Routine
 from bartiq.transform import add_aggregated_resources, add_circuit_volume
 
 ccry_gate = {
@@ -248,9 +248,6 @@ def test_add_circuit_volume_simple(backend):
 
 
 def test_add_circuit_volume_with_children(backend):
-    from bartiq import CompiledRoutine, Resource, ResourceType
-    from bartiq.transform import add_circuit_volume
-
     # Create a child routine with required resources
     child = CompiledRoutine(
         name="child",
