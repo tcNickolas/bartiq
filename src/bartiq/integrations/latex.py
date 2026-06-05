@@ -37,8 +37,10 @@ def routine_to_latex(
 
     Args:
         routine: The routine to render.
-        show_non_root_costs: If ``True`` (default), displays all costs, otherwise only includes costs
+        show_non_root_resources: If ``True`` (default), displays all costs, otherwise only includes costs
             from the root node.
+        paged: If ``True``, returns the resources as a list of strings, otherwise concatenates them
+            into a single string. Defaults to ``False``.
 
     Returns:
         A LaTeX snippet of the routine.
