@@ -101,16 +101,16 @@ def add_aggregated_resources(
     Args:
         routine: The program to which the resources will be added.
         aggregation_dict: A dictionary that decomposes resources into more fundamental components along with their
-        respective multipliers. The multipliers can be numeric values or strings representing valid bartiq expressions.
+            respective multipliers. The multipliers can be numeric values or strings representing valid bartiq expressions.
                           Example:
                           {
                               "swap": {"CNOT": 3},
                               "arbitrary_z": {"T_gates": "3*log2(1/epsilon) + O(log(log(1/epsilon)))"},
                               ...
                           }
-        remove_decomposed : Whether to remove the decomposed resources from the routine.
+        remove_decomposed: Whether to remove the decomposed resources from the routine.
             Defaults to True.
-        backend : Backend instance to use for handling expressions.
+        backend: Backend instance to use for handling expressions.
             Defaults to `sympy_backend`.
 
     Returns:
@@ -255,7 +255,7 @@ def add_circuit_volume(
         routine: The compiled routine to which the resource will be added.
         name_of_aggregated_t: Name of the resource representing the number of T gates (default: 'aggregated_t_gates').
         name_of_qubit_highwater: Name of the resource representing the qubit highwater mark
-        (default: 'qubit_highwater').
+            (default: 'qubit_highwater').
         backend: Symbolic backend to use for symbolic operations.
 
     Returns:
