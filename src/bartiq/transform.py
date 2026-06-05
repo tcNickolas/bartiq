@@ -101,7 +101,8 @@ def add_aggregated_resources(
     Args:
         routine: The program to which the resources will be added.
         aggregation_dict: A dictionary that decomposes resources into more fundamental components along with their
-            respective multipliers. The multipliers can be numeric values or strings representing valid bartiq expressions.
+            respective multipliers. The multipliers can be numeric values or strings representing valid bartiq
+            expressions.
                           Example:
                           {
                               "swap": {"CNOT": 3},
